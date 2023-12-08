@@ -1,0 +1,51 @@
+---
+title: "Analyzing Aggravated Burglaries in Davidson County"
+output: html_notebook
+---
+
+```{r}
+library(sf)
+library(tidyverse)
+```
+
+Part 1: Data Preparation
+
+You've been provided three datasets for this project:
+
+burglaries_2023.csv: Contains data on the aggravated burglary incidents in Davidson County. This was obtained from https://data.nashville.gov/Police/Metro-Nashville-Police-Department-Incidents/2u6v-ujjs.
+census.csv: Census tract level data on population and median income. This was obtained from the US Census American Community Survey.
+DC: A shapefile containing Davidson County census tracts
+Perform a spatial join to determine the census tract in which each burglary occurred. Hint: You may want to make use of the st_as_sf function in order to convert the burglaries data into an sf object.
+
+After performing the spatial join, merge in the census data. Note: Make sure that the final dataset contains all census tracts.
+
+```{r}
+census_tract <- st_read('../data/DC/DC.shp')
+```
+
+```{r}
+burglaries <- read_csv("../data/burglaries_2023.csv")
+```
+```{r}
+census_tract |> 
+  distinct(TRACTCE) |> 
+  nrow()
+```
+
+```{r}
+burglaries_sp <- st_as_sf(burglaries |> drop_na(latitude),
+         coords = c("longitude", "latitude"), crs = st_crs(census_tract)
+         )
+```
+
+```{r}
+burg_loc <- st_join(census_tract, burglaries_sp, join = st_contains)
+```
+
+```{r}
+burg_loc |> 
+  distinct(TRACTCE) |> 
+  nrow()
+```
+
+
