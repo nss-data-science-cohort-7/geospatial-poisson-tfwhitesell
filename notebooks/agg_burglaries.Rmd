@@ -49,3 +49,17 @@ burg_loc |>
 ```
 
 
+```{r}
+census <- read_csv("../data/census.csv", col_types = cols(state = "c", county = "c"))
+```
+
+```{r}
+burg_loc <- inner_join(burg_loc, census, join_by(TRACTCE == tract, STATEFP == state, COUNTYFP == county))
+```
+
+```{r}
+burg_loc |> 
+  distinct(TRACTCE) |> 
+  nrow()
+```
+
