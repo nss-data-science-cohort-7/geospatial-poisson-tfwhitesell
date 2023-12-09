@@ -24,7 +24,8 @@ census_tract <- st_read('../data/DC/DC.shp')
 ```
 
 ```{r}
-burglaries <- read_csv("../data/burglaries_2023.csv")
+burglaries <- read_csv("../data/burglaries_2023.csv") |> 
+  filter(!latitude < 35)
 ```
 ```{r}
 census_tract |> 
@@ -39,6 +40,14 @@ burglaries_sp <- st_as_sf(burglaries |> drop_na(latitude),
 ```
 
 ```{r}
+census_tract |> 
+  ggplot() +
+  geom_sf() +
+  geom_sf(data = burglaries_sp, size = 0.1)
+```
+No points outside Nashville are present.
+
+```{r}
 burg_loc <- st_join(census_tract, burglaries_sp, join = st_contains)
 ```
 
@@ -47,7 +56,6 @@ burg_loc |>
   distinct(TRACTCE) |> 
   nrow()
 ```
-
 
 ```{r}
 census <- read_csv("../data/census.csv", col_types = cols(state = "c", county = "c"))
@@ -61,5 +69,41 @@ burg_loc <- inner_join(burg_loc, census, join_by(TRACTCE == tract, STATEFP == st
 burg_loc |> 
   distinct(TRACTCE) |> 
   nrow()
+```
+
+
+
+
+
+
+Part 2 - Exploratory Analysis
+Perform some exploratory analysis on your prepared dataset.
+
+Aggregate the data by census tract. Warning: each incident can appear multiple times if there are multiple victims, so be sure that you aren't double-counting any incidents.
+
+Which census tract had the highest number of burglaries? Which census tract had the highest number of burglaries per 1000 residents?
+
+We're interested in the relationship between median income and number of aggravated burglaries, so examine those variables on their own and together to see what you can find. You may want to perform additional calculations, create plots, etc.
+
+
+Drop duplicate incidents since we aren't considering the number of victims. If that were a factor, the better approach would be grouping by everything except victim number and adding a column with a count of rows (or at least that's what I would do in SQL).
+```{r}
+burg_distinct <- burg_loc |> 
+  distinct(incident_number, .keep_all = TRUE)
+```
+895 distinct incidents
+
+Census tract with most burglaries
+```{r}
+burg_distinct |> 
+  st_drop_geometry() |> 
+  group_by(TRACTCE) |> 
+  count(name = "num_burglaries") |> 
+  arrange(desc(num_burglaries))
+```
+
+highest number of burglaries per 1000 residents
+```{r}
+
 ```
 
