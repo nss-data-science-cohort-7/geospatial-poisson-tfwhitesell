@@ -87,9 +87,14 @@ We're interested in the relationship between median income and number of aggrava
 
 
 Drop duplicate incidents since we aren't considering the number of victims. If that were a factor, the better approach would be grouping by everything except victim number and adding a column with a count of rows (or at least that's what I would do in SQL).
+
+********** fix this so it doesn't drop tracts with no burglaries **************
 ```{r}
 burg_distinct <- burg_loc |> 
-  distinct(incident_number, .keep_all = TRUE)
+  distinct(incident_number, .keep_all = TRUE) |> 
+  select(TRACTCE, population, median_income) |> 
+  drop_na(TRACTCE) |> 
+  group_by(TRACTCE)
 ```
 895 distinct incidents
 
@@ -102,8 +107,60 @@ burg_distinct |>
   arrange(desc(num_burglaries))
 ```
 
+
 highest number of burglaries per 1000 residents
 ```{r}
-
+burg_by_tract <- burg_distinct |> 
+  group_by(TRACTCE) |> 
+  summarize(num_burglaries = n(),
+            population = first(population),
+            median_income = first(median_income)) |> 
+  ungroup() |> 
+  mutate(per_1000 = num_burglaries * 1000 / population)
 ```
+
+```{r}
+burg_by_tract |> 
+  arrange(desc(per_1000))
+```
+Two tracts with no population and negative median income - they do exist in the original tract data so I don't want to drop them in general, but they're kind of nonsensical for anything from a population of income standpoint so ignore them for now.
+
+Relationship between median income and number of burglaries.
+```{r}
+burg_by_tract |> 
+  arrange(desc(median_income))
+```
+On first inspection, tracts with higher median income experience fewer burglaries per 1000 population.
+
+```{r}
+burg_by_tract |> 
+  ggplot(aes(fill = per_1000)) +
+  geom_sf()
+```
+
+```{r}
+burg_by_tract |> 
+  ggplot(aes(x = per_1000)) +
+  geom_histogram()
+```
+
+```{r}
+burg_by_tract |> 
+  ggplot(aes(x = population)) +
+  geom_histogram()
+```
+
+```{r}
+burg_by_tract <- burg_by_tract |> 
+  mutate(log_pop = log(population)) |> 
+  filter(!median_income < 0)
+```
+
+```{r}
+glm("num_burglaries ~ median_income",
+              data = burg_by_tract,
+              family = poisson,
+              offset = log_pop)
+```
+
 
