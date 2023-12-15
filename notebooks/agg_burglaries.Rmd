@@ -98,6 +98,7 @@ burg_distinct <- burg_loc |>
 ```
 895 distinct incidents
 
+
 Census tract with most burglaries
 ```{r}
 burg_distinct |> 
@@ -151,16 +152,53 @@ burg_by_tract |>
 ```
 
 ```{r}
+burg_by_tract |> 
+  ggplot(aes(x = median_income, y = per_1000)) +
+  geom_point()
+```
+Rate of burglary is higher in areas with lower median income, although the relationship is not linear. It looks like once a tract has a median income of ~$100K the rate of burglary per 1000 residents remains around the same.
+
+```{r}
+burg_by_tract |> 
+  ggplot(aes(x = log(median_income), y = per_1000)) +
+  geom_point()
+```
+
+
+
+```{r}
 burg_by_tract <- burg_by_tract |> 
   mutate(log_pop = log(population)) |> 
   filter(!median_income < 0)
 ```
 
 ```{r}
-glm("num_burglaries ~ median_income",
+burg_glm <- glm("num_burglaries ~ median_income",
               data = burg_by_tract,
               family = poisson,
-              offset = log_pop)
+              offset = log(population))
 ```
 
+```{r}
+summary(burg_glm)
+```
 
+```{r}
+est_df <- tibble(
+  median_income = seq(from = min(burg_by_tract$median_income, na.rm = TRUE),
+                      to = max(burg_by_tract$median_income, na.rm = TRUE),
+                      length.out = 100),
+  population = 1000,
+)
+
+est_df <- est_df |> 
+  bind_cols(predict(burg_glm, newdata = est_df, type = "response")) |> 
+  rename("Estimated Mean Number of Burglaries" = "...3")
+
+est_df |> 
+  ggplot(aes(x = median_income, y = `Estimated Mean Number of Burglaries`)) +
+  geom_point(data = burg_by_tract, aes(x = median_income, y = num_burglaries)) +
+  geom_line(data = est_df, aes(x = median_income, y = `Estimated Mean Number of Burglaries`))
+```
+
+This line doesn't look like a good fit on the lower end, perhaps need to look at how I'm cleaning and merging the data.
